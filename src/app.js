@@ -4,10 +4,12 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const app = express();
 const authRoutes = require("./routes/authRoutes");
+const productRoutes = require("./routes/productRoutes");
 const env = require("./config/env");
 
 app.use(express.json());
 app.use("/auth", authRoutes);
+app.use("/products", productRoutes);
 app.use(helmet());
 app.use(
     cors({
