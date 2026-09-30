@@ -1,8 +1,8 @@
 const express = require("express");
 const productController = require("../controllers/productController");
 const authMiddleware = require("../middleware/authMiddleware");
-const {authorize} = require("../middleware/roleMiddleware");
-const {validate} = require("../middleware/validateMiddleware");
+const authorize = require("../middleware/roleMiddleware");
+const validate = require("../middleware/validateMiddleware");
 const {createProductSchema, updateProductSchema} = require("../validations/productValidation");
 const router = express.Router();
 
