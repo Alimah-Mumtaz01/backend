@@ -44,7 +44,7 @@ const createOrder = async (id_user, orderData) => {
                     throw error;
                 }
                 preparedVariants.push({
-                    id_varian: varian.id,
+                    id_varian: varian.id_varian,
                     jumlah: itemVariant.jumlah
                 });
             }
