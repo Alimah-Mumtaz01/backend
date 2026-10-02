@@ -6,11 +6,13 @@ const app = express();
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const varianRoutes = require("./routes/varianRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 const env = require("./config/env");
 
 app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/products", productRoutes);
+app.use("/orders", orderRoutes);
 app.use("/varian", varianRoutes);
 app.use(helmet());
 app.use(
