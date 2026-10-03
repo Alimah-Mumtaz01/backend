@@ -15,11 +15,11 @@ const getCheckoutByOrderId = async (id_order, id_user) => {
                         },
                         {
                             model: OrderItemVariant,
-                            as: 'orderItemVariants',
+                            as: 'variants',
                             include: [
                                 {
                                     model: Varian,
-                                    as: 'variant'
+                                    as: 'varian'
                                 }
                             ]
                         }
@@ -44,17 +44,17 @@ const getCheckoutByOrderId = async (id_order, id_user) => {
             }
 
             const variants = [];
-            for (const itemVariant of orderItem.orderItemVariants || []) {
-                if (!itemVariant.variant) {
+            for (const itemVariant of orderItem.variants || []) {
+                if (!itemVariant.varian) {
                     throw new Error(`Varian pada order item ${orderItem.id_order_item} tidak ditemukan`);
                 }
                 variants.push({
                     id_varian: itemVariant.id_varian,
-                    nama_varian: itemVariant.variant.nama_varian,
+                    nama_varian: itemVariant.varian.nama_varian,
                     jumlah: itemVariant.jumlah,
-                    stok_tersedia: itemVariant.variant.stok,
-                    status: itemVariant.variant.status,
-                    stok_cukup: Number(itemVariant.variant.stok) >= Number(itemVariant.jumlah)
+                    stok_tersedia: itemVariant.varian.stok,
+                    status: itemVariant.varian.status,
+                    stok_cukup: Number(itemVariant.varian.stok) >= Number(itemVariant.jumlah)
                 });
             }
 
