@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const app = express();
 const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRoutes");
 const varianRoutes = require("./routes/varianRoutes");
 const orderRoutes = require("./routes/orderRoutes");
@@ -12,6 +13,7 @@ const env = require("./config/env");
 
 app.use(express.json());
 app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
 app.use("/checkout", checkoutRoutes);
