@@ -24,6 +24,12 @@ const defineUserModel = (sequelize) => {
                 },
             },
 
+            no_hp: {
+                type: DataTypes.STRING(20),
+                allowNull: false,
+                unique: true,
+            },
+
             password: {
                 type: DataTypes.STRING(255),
                 allowNull: false,
