@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const { User, sequelize } = require("../models");
 const env = require("../config/env");
 
-const register = async ({ nama, email, password }) => {
+const register = async ({ nama, email, no_hp, password }) => {
     const transaction = await sequelize.transaction();
     try {
         const existingUser = await User.findOne({
@@ -22,6 +22,7 @@ const register = async ({ nama, email, password }) => {
             {
                 nama,
                 email,
+                no_hp,
                 password: hashedPassword,
                 role: "user",
             },
@@ -34,6 +35,7 @@ const register = async ({ nama, email, password }) => {
             id_user: user.id_user,
             nama: user.nama,
             email: user.email,
+            no_hp: user.no_hp,
             role: user.role,
         };
     } catch (error) {
@@ -80,6 +82,7 @@ const login = async ({ email, password }) => {
                 id_user: user.id_user,
                 nama: user.nama,
                 email: user.email,
+                no_hp: user.no_hp,
                 role: user.role,
             },
         };
