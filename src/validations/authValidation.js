@@ -25,6 +25,15 @@ const registerSchema = Joi.object({
             "any.required": "Email wajib diisi",
         }),
 
+    no_hp: Joi.string()
+        .pattern(/^(\+62|62|0)8[1-9][0-9]{7,11}$/)
+        .required()
+        .messages({
+            "string.pattern.base": "Format nomor handphone tidak valid",
+            "string.empty": "Nomor handphone wajib diisi",
+            "any.required": "Nomor handphone wajib diisi",
+        }),
+
     password: Joi.string()
         .min(6)
         .max(100)
