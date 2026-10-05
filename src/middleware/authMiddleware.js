@@ -25,6 +25,7 @@ const authenticate = async (req, res, next) => {
                 "id_user",
                 "nama",
                 "email",
+                "no_hp",
                 "role",
                 "createdAt",
                 "updatedAt",
