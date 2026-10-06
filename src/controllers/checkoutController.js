@@ -1,18 +1,16 @@
 const checkoutService = require('../services/checkoutService');
 
-const getCheckout = async (req, res) => {
+const previewCheckout = async (req, res) => {
     try {
-        const {id_order} = req.params;
-        const id_user = req.user.id_user;
-        const checkout = await checkoutService.getCheckoutByOrderId(id_order, id_user);
+        const checkout = await checkoutService.previewCheckout(req.body);
         return res.status(200).json({
             success: true,
-            message: 'Data checkout berhasil diambil',
+            message: 'Checkout berhasil dihitung',
             data: checkout
         });
     } catch (error) {
-        console.error('GET CHECKOUT ERROR:', error);
-        return res.status(404).json({
+        console.error('PREVIEW CHECKOUT ERROR:', error);
+        return res.status(400).json({
             success: false,
             message: error.message
         });
@@ -20,5 +18,5 @@ const getCheckout = async (req, res) => {
 };
 
 module.exports = {
-    getCheckout
+    previewCheckout
 };

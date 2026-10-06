@@ -4,6 +4,16 @@ const createOrder = async (id_user, orderData) => {
     const transaction = await sequelize.transaction();
     try {
         const {tipe_pengiriman, alamat_pengiriman, catatan, items} = orderData;
+        if (!items || items.length === 0) {
+            const error = new Error("Minimal harus ada satu produk dalam pesanan");
+            error.statusCode = 400;
+            throw error;
+        }
+        if (tipe_pengiriman === 'delivery' && !alamat_pengiriman) {
+            const error = new Error("Alamat pengiriman harus diisi untuk tipe pengiriman delivery");
+            error.statusCode = 400;
+            throw error;
+        }
         let subtotal = 0;
         const preparedItems = [];
         for (const item of items) {
@@ -18,8 +28,18 @@ const createOrder = async (id_user, orderData) => {
                 error.statusCode = 400;
                 throw error;
             }
-            const expectedVariantAmount = product.jumlah_isi * item.quantity;
-            const selectedVariantAmount = item.variants.reduce((total, variant) => total + variant.jumlah, 0);
+            if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+                const error = new Error(`Quantity produk ${product.nama_product} tidak valid`);
+                error.statusCode = 400;
+                throw error;
+            }
+            if (!item.variants || item.variants.length === 0) {
+                const error = new Error(`Varian untuk produk ${product.nama_product} harus dipilih`);
+                error.statusCode = 400;
+                throw error;
+            }
+            const expectedVariantAmount = Number(product.jumlah_isi) * Number(item.quantity);
+            const selectedVariantAmount = item.variants.reduce((total, variant) => total + Number(variant.jumlah), 0);
             if (selectedVariantAmount !== expectedVariantAmount) {
                 const error = new Error(`Jumlah variant untuk produk ${product.nama_product} harus ${expectedVariantAmount} pcs`);
                 error.statusCode = 400;
@@ -38,7 +58,7 @@ const createOrder = async (id_user, orderData) => {
                     error.statusCode = 400;
                     throw error;
                 }
-                if (varian.stock < itemVariant.jumlah) {
+                if (varian.stok < itemVariant.jumlah) {
                     const error = new Error(`Stok varian ${varian.nama_varian} tidak mencukupi`);
                     error.statusCode = 400;
                     throw error;
@@ -49,7 +69,7 @@ const createOrder = async (id_user, orderData) => {
                 });
             }
             const hargaSatuan = Number(product.harga);
-            const totalHargaItem = hargaSatuan * item.quantity;
+            const totalHargaItem = hargaSatuan * Number(item.quantity);
             subtotal += totalHargaItem;
             preparedItems.push({
                 product,
@@ -59,7 +79,15 @@ const createOrder = async (id_user, orderData) => {
                 variants: preparedVariants
             });
         }
-        const ongkir = 0;
+        let ongkir = 0;
+        if (tipe_pengiriman === 'delivery') {
+            if (subtotal < 50000) {
+                const error = new Error("Minimal pembelian untuk pengiriman delivery adalah Rp 50.000");
+                error.statusCode = 400;
+                throw error;
+            }
+            ongkir = 0;
+        }
         const total_harga = subtotal + ongkir;
         const order = await Order.create({
             id_user,

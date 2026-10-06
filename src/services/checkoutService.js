@@ -1,85 +1,111 @@
-const {Order, OrderItem, Product, OrderItemVariant, Varian} = require('../models');
+const {Product, Varian} = require("../models");
 
-const getCheckoutByOrderId = async (id_order, id_user) => {
+const previewCheckout = async (orderData) => {
     try {
-        const checkout = await Order.findOne({
-            where: {id_order, id_user},
-            include: [
-                {
-                    model: OrderItem,
-                    as: 'orderItems',
-                    include: [
-                        {
-                            model: Product,
-                            as: 'product'
-                        },
-                        {
-                            model: OrderItemVariant,
-                            as: 'variants',
-                            include: [
-                                {
-                                    model: Varian,
-                                    as: 'varian'
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        });
-        if (!checkout) {
-            throw new Error('Order tidak ditemukan');
+        const {tipe_pengiriman, alamat_pengiriman, catatan, items} = orderData;
+        if (!items || items.length === 0) {
+            const error = new Error("Minimal harus ada satu produk dalam pesanan");
+            error.statusCode = 400;
+            throw error;
         }
-        if (!checkout.orderItems || checkout.orderItems.length === 0) {
-            throw new Error('Order tidak memiliki item');
+        if (tipe_pengiriman === 'delivery' && !alamat_pengiriman) {
+            const error = new Error("Alamat pengiriman harus diisi untuk tipe pengiriman delivery");
+            error.statusCode = 400;
+            throw error;
         }
+        let subtotal = 0;
         const checkoutItems = [];
-        for (const orderItem of checkout.orderItems) {
-            if (!orderItem.product) {
-                throw new Error(`Produk pada order item ${orderItem.id_order_item} tidak ditemukan`);
+        for (const item of items) {
+            const product = await Product.findByPk(item.id_product);
+            if (!product) {
+                const error = new Error(`Produk dengan ID ${item.id_product} tidak ditemukan`);
+                error.statusCode = 404;
+                throw error;
             }
-
-            if (orderItem.product.status !== 'aktif' && checkout.status_order === 'menunggu_konfirmasi') {
-                throw new Error(`Produk ${orderItem.product.nama_product} sudah tidak aktif`);
+            if (product.status !== 'aktif') {
+                const error = new Error(`Produk ${product.nama_product} sedang tidak aktif`);
+                error.statusCode = 400;
+                throw error;
             }
-
-            const variants = [];
-            for (const itemVariant of orderItem.variants || []) {
-                if (!itemVariant.varian) {
-                    throw new Error(`Varian pada order item ${orderItem.id_order_item} tidak ditemukan`);
+            if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+                const error = new Error(`Quantity produk ${product.nama_product} harus lebih dari 0`);
+                error.statusCode = 400;
+                throw error;
+            }
+            if (!item.variants || item.variants.length === 0) {
+                const error = new Error(`Varian untuk produk ${product.nama_product} harus dipilih`);
+                error.statusCode = 400;
+                throw error;
+            }
+            const expectedVariantAmount = Number(product.jumlah_isi) * Number(item.quantity);
+            const selectedVariantAmount = item.variants.reduce((total, variant) => total + Number(variant.jumlah), 0);
+            if (selectedVariantAmount !== expectedVariantAmount) {
+                const error = new Error(`Jumlah varian untuk produk ${product.nama_product} harus ${expectedVariantAmount} pcs`);
+                error.statusCode = 400;
+                throw error;
+            }
+            const checkoutVariants = [];
+            for (const itemVariant of item.variants) {
+                if (!Number.isInteger(itemVariant.jumlah) || itemVariant.jumlah <= 0) {
+                    const error = new Error(`Jumlah varian untuk produk ${product.nama_product} harus lebih dari 0`);
+                    error.statusCode = 400;
+                    throw error;
                 }
-                variants.push({
-                    id_varian: itemVariant.id_varian,
-                    nama_varian: itemVariant.varian.nama_varian,
+                const varian = await Varian.findByPk(itemVariant.id_varian);
+                if (!varian) {
+                    const error = new Error(`Varian dengan ID ${itemVariant.id_varian} tidak ditemukan`);
+                    error.statusCode = 404;
+                    throw error;
+                }
+                if (varian.status !== 'aktif') {
+                    const error = new Error(`Varian ${varian.nama_varian} sedang tidak aktif`);
+                    error.statusCode = 400;
+                    throw error;
+                }
+                if (Number(varian.stok) < Number(itemVariant.jumlah)) {
+                    const error = new Error(`Stok varian ${varian.nama_varian} tidak mencukupi`);
+                    error.statusCode = 400;
+                    throw error;
+                }
+                checkoutVariants.push({
+                    id_varian: varian.id_varian,
+                    nama_varian: varian.nama_varian,
                     jumlah: itemVariant.jumlah,
-                    stok_tersedia: itemVariant.varian.stok,
-                    status: itemVariant.varian.status,
-                    stok_cukup: Number(itemVariant.varian.stok) >= Number(itemVariant.jumlah)
+                    stok: varian.stok
                 });
             }
-
+            const hargaSatuan = Number(product.harga);
+            const totalHargaItem = hargaSatuan * Number(item.quantity);
+            subtotal += totalHargaItem;
             checkoutItems.push({
-                id_order_item: orderItem.id_order_item,
-                id_product: orderItem.id_product,
-                nama_product: orderItem.product.nama_product,
-                jumlah_isi: orderItem.product.jumlah_isi,
-                quantity: orderItem.quantity,
-                harga_satuan: Number(orderItem.harga_satuan),
-                total_harga: Number(orderItem.total_harga),
-                variants
+                product: {
+                    id_product: product.id_product,
+                    nama_product: product.nama_product,
+                    jumlah_isi: Number(product.jumlah_isi),
+                    quantity: Number(item.quantity),
+                    harga_satuan: hargaSatuan,
+                    total_harga: totalHargaItem,
+                    variants: checkoutVariants
+                }
             });
         }
-
+        let ongkir = 0;
+        if (tipe_pengiriman === 'delivery') {
+            if (subtotal < 50000) {
+                const error = new Error("Minimal pembelian untuk pengiriman delivery adalah Rp 50.000");
+                error.statusCode = 400;
+                throw error;
+            }
+            ongkir = 0;
+        }
+        const total_harga = subtotal + ongkir;
         return {
-            id_order: checkout.id_order,
-            id_user: checkout.id_user,
-            tipe_pengiriman: checkout.tipe_pengiriman,
-            alamat_pengiriman: checkout.alamat_pengiriman,
-            catatan: checkout.catatan,
-            subtotal: Number(checkout.subtotal),
-            ongkir: Number(checkout.ongkir),
-            total_harga: Number(checkout.total_harga),
-            status_order: checkout.status_order,
+            tipe_pengiriman,
+            alamat_pengiriman: tipe_pengiriman === 'delivery' ? alamat_pengiriman : null,
+            catatan: catatan || null,
+            subtotal,
+            ongkir,
+            total_harga,
             items: checkoutItems
         };
     } catch (error) {
@@ -88,5 +114,5 @@ const getCheckoutByOrderId = async (id_order, id_user) => {
 };
 
 module.exports = {
-    getCheckoutByOrderId
+    previewCheckout
 };
