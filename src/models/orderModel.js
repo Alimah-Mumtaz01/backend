@@ -50,8 +50,8 @@ const defineOrderModel = (sequelize) => {
 
             status_order: {
                 type: DataTypes.ENUM(
-                    "pending_payment",
                     "waiting_verification",
+                    "pending_payment",
                     "processing",
                     "ready",
                     "on_delivery",
@@ -59,7 +59,7 @@ const defineOrderModel = (sequelize) => {
                     "cancelled"
                 ),
                 allowNull: false,
-                defaultValue: "pending_payment",
+                defaultValue: "waiting_verification",
             },
         },
         {

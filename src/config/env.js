@@ -14,4 +14,5 @@ module.exports = {
         expiresIn: process.env.JWT_EXPIRES_IN || "1d",
     },
     frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
+    deliveryFee: Number(process.env.DELIVERY_FEE) || 10000,
 };

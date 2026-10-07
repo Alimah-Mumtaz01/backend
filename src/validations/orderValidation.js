@@ -84,6 +84,21 @@ const createOrderSchema = Joi.object({
         })
 });
 
+const updateShippingSchema = Joi.object({
+    tipe_pengiriman: Joi.string()
+        .valid('delivery', 'pickup')
+        .required()
+        .messages({
+            'any.only': 'Tipe pengiriman harus delivery atau pickup',
+            'any.required': 'Tipe pengiriman harus diisi'
+        }),
+        
+    alamat_pengiriman: Joi.string()
+        .max(500)
+        .allow('', null)
+});
+
 module.exports = {
-    createOrderSchema
+    createOrderSchema,
+    updateShippingSchema
 };

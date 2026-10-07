@@ -1,4 +1,5 @@
 const {sequelize, Order, OrderItem, OrderItemVariant, Product, Varian} = require('../models');
+const env = require('../config/env');
 
 const createOrder = async (id_user, orderData) => {
     const transaction = await sequelize.transaction();
@@ -98,7 +99,7 @@ const createOrder = async (id_user, orderData) => {
             subtotal,
             ongkir,
             total_harga,
-            status: 'waiting_verification'
+            status_order: 'waiting_verification'
         }, {transaction});
         for (const item of preparedItems) {
             const orderItem = await OrderItem.create({
@@ -196,8 +197,65 @@ const getOrderById = async (id_order, id_user) => {
     }
 };
 
+const updateShipping = async (id_order, id_user, shippingData) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const {tipe_pengiriman, alamat_pengiriman} = shippingData;
+        const order = await Order.findOne({
+            where: {id_order, id_user},
+            transaction,
+            lock: transaction.LOCK.UPDATE
+        });
+        if (!order) {
+            const error = new Error("Order tidak ditemukan");
+            error.statusCode = 404;
+            throw error;
+        }
+        if (order.status_order !== 'waiting_verification') {
+            throw new Error("Metode pengiriman hanya dapat diubah saat status order adalah 'waiting_verification'");
+        }
+        const subtotal = Number(order.subtotal);
+        let ongkir = 0;
+        let alamatPengiriman = null;
+        if (tipe_pengiriman === 'pickup') {
+            ongkir = 0;
+            alamatPengiriman = null;
+        }
+        if (tipe_pengiriman === 'delivery') {
+            if (!alamat_pengiriman || alamat_pengiriman.trim().length === 0) {
+                throw new Error("Alamat pengiriman harus diisi untuk tipe pengiriman delivery");
+            }
+            if (subtotal < 50000) {
+                throw new Error("Minimal pembelian untuk pengiriman delivery adalah Rp 50.000");
+            }
+            ongkir = env.deliveryFee;
+            alamatPengiriman = alamat_pengiriman.trim();
+        }
+        const total_harga = subtotal + ongkir;
+        await order.update({
+            tipe_pengiriman,
+            alamat_pengiriman: alamatPengiriman,
+            ongkir,
+            total_harga: total_harga
+        }, { transaction });
+        await transaction.commit();
+        return {
+            id_order: order.id_order,
+            tipe_pengiriman: order.tipe_pengiriman,
+            alamat_pengiriman: order.alamat_pengiriman,
+            subtotal: order.subtotal,
+            ongkir: order.ongkir,
+            total_harga: order.total_harga
+        }
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
+};
+
 module.exports = {
     createOrder,
     getOrdersByUser,
-    getOrderById
+    getOrderById,
+    updateShipping
 };
