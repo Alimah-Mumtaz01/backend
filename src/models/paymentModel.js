@@ -17,7 +17,7 @@ const definePaymentModel = (sequelize) => {
             },
 
             metode_pembayaran: {
-                type: DataTypes.STRING(50),
+                type: DataTypes.ENUM("transfer_bank", "e-wallet"),
                 allowNull: false,
             },
 
@@ -43,6 +43,11 @@ const definePaymentModel = (sequelize) => {
 
             verified_at: {
                 type: DataTypes.DATE,
+                allowNull: true,
+            },
+
+            catatan_verifikasi: {
+                type: DataTypes.TEXT,
                 allowNull: true,
             },
         },
