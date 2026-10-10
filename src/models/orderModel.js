@@ -50,16 +50,19 @@ const defineOrderModel = (sequelize) => {
 
             status_order: {
                 type: DataTypes.ENUM(
-                    "waiting_verification",
-                    "pending_payment",
-                    "processing",
-                    "ready",
-                    "on_delivery",
-                    "completed",
-                    "cancelled"
+                    "menunggu_konfirmasi",
+                    "pesanan_diterima",
+                    "menunggu_pembayaran",
+                    "pembayaran_diperiksa",
+                    "pembayaran_ditolak",
+                    "dibatalkan",
+                    "diproses",
+                    "siap_diambil",
+                    "sedang_dikirim",
+                    "selesai"
                 ),
                 allowNull: false,
-                defaultValue: "waiting_verification",
+                defaultValue: "menunggu_konfirmasi",
             },
         },
         {

@@ -1,4 +1,4 @@
-const {sequelize, Order, OrderItem, OrderItemVariant, Product, Varian} = require('../models');
+const {sequelize, Order, OrderItem, OrderItemVariant, Product, Varian, Payment} = require('../models');
 const env = require('../config/env');
 
 const createOrder = async (id_user, orderData) => {
@@ -99,7 +99,7 @@ const createOrder = async (id_user, orderData) => {
             subtotal,
             ongkir,
             total_harga,
-            status_order: 'waiting_verification'
+            status_order: 'menunggu_konfirmasi'
         }, {transaction});
         for (const item of preparedItems) {
             const orderItem = await OrderItem.create({
@@ -211,8 +211,8 @@ const updateShipping = async (id_order, id_user, shippingData) => {
             error.statusCode = 404;
             throw error;
         }
-        if (order.status_order !== 'waiting_verification') {
-            throw new Error("Metode pengiriman hanya dapat diubah saat status order adalah 'waiting_verification'");
+        if (order.status_order !== 'menunggu_konfirmasi') {
+            throw new Error("Metode pengiriman hanya dapat diubah saat status order adalah 'menunggu_konfirmasi'");
         }
         const subtotal = Number(order.subtotal);
         let ongkir = 0;
@@ -253,9 +253,142 @@ const updateShipping = async (id_order, id_user, shippingData) => {
     }
 };
 
+const allowedTransitions = {
+    menunggu_konfirmasi: [
+        "pesanan_diterima",
+        "dibatalkan",
+    ],
+    pesanan_diterima: [
+        "menunggu_pembayaran",
+        "dibatalkan"
+    ],
+    menunggu_pembayaran: [
+        "dibatalkan"
+    ],
+    diprosess: [
+        "siap_diambil",
+        "sedang_dikirim"
+    ],
+    siap_diambil: [
+        "selesai"
+    ],
+    sedang_dikirim: [
+        "selesai"
+    ]
+}
+
+const cancelableStatus = [
+    "menunggu_konfirmasi",
+    "pesanan_diterima",
+    "menunggu_pembayaran",
+    "pembayaran_ditolak"
+];
+
+const updateOrderStatus = async (id_order, status_order_baru) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const order = await Order.findByPk(id_order, {
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+        });
+        if (!order) {
+            const error = new Error("Order tidak ditemukan");
+            error.statusCode = 404;
+            throw error;
+        }
+        const status_sekarang = order.status_order;
+        if (
+            !Order.prototype.hasOwnProperty.call(
+                allowedTransitions,
+                status_sekarang
+            ) &&
+            !cancelableStatus.includes(status_sekarang)
+        ) {
+            const error = new Error("Status order saat ini tidak dapat diubah melalui endpoint ini");
+            error.statusCode = 400;
+            throw error;
+        }
+        if (status_order_baru === "dibatalkan") {
+            if (!cancelableStatus.includes(status_sekarang)) {
+                const error = new Error("Order tidak dapat dibatalkan pada tahap ini");
+                error.statusCode = 400;
+                throw error;
+            }
+            const payment = await Payment.findOne({
+                where: {
+                    id_order,
+                },
+                transaction,
+                lock: transaction.LOCK.UPDATE,
+            });
+            if (payment && payment.status.payment === "verified") {
+                const error = new Error("Order dengan pembayaran terverifikasi tidak dapat dibatalkan melalui endpoint ini");
+                error.statusCode = 400;
+                throw error;
+            }
+        } else {
+            const allowed = allowedTransitions[status_sekarang] || [];
+            if (!allowed.includes(status_order_baru)) {
+                const error = new Error(`Perubahan status dari ${status_sekarang} ke ${status_order_baru} tidak diizinkan`);
+                error.statusCode = 400;
+                throw error;
+            }
+        }
+        if (status_order_baru === "siap_diambil") {
+            if (order.tipe_pengiriman !== "pickup") {
+                const error = new Error("Status siap_diambil hanya berlaku untuk pesanan pickup");
+                error.statusCode = 400;
+                throw error;
+            }
+        }
+        if (status_order_baru === "sedang_dikirim") {
+            if (order.tipe_pengiriman !== "delivery") {
+                const error = new Error("Status sedang_dikirim hanya berlaku untuk pesanan delivery");
+                error.statusCode = 400;
+                throw error;
+            }
+        }
+        order.status_order = status_order_baru;
+        await order.save({
+            transaction
+        });
+        await transaction.commit();
+        return order;
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
+};
+
+const getOrderStatusByUser = async (id_order, id_user) => {
+    const order = await Order.findOne({
+        where: {
+            id_order,
+            id_user
+        },
+        attributes: [
+            "id_order",
+            "id_user",
+            "status_order",
+            "tipe_pengiriman",
+            "total_harga",
+            "createdAt",
+            "updatedAt"
+        ]
+    });
+    if (!order) {
+        const error = new Error("Order tidak ditemukan");
+        error.statusCode = 404;
+        throw error;
+    }
+    return order;
+};
+
 module.exports = {
     createOrder,
     getOrdersByUser,
     getOrderById,
-    updateShipping
+    updateShipping,
+    updateOrderStatus,
+    getOrderStatusByUser
 };

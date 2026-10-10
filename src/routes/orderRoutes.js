@@ -14,5 +14,7 @@ router.get('/my-orders/:id_order', authMiddleware, orderController.getMyOrderByI
 router.put('/my-orders/:id_order/shipping', authMiddleware, validate(updateShippingSchema), orderController.updateShipping);
 router.post('/:id_order/payment', authMiddleware, uploadPayment.single("bukti_pembayaran"), paymentController.uploadPayment);
 router.put('/:id_order/payment/verify', authMiddleware, roleMiddleware("admin"), paymentController.verifyPayment);
+router.put('/:id_order/status', authMiddleware, roleMiddleware("admin"), orderController.updateOrderStatus);
+router.get('/my-orders/:id_order/status', authMiddleware, orderController.getMyOrderStatus);
 
 module.exports = router;

@@ -20,7 +20,7 @@ const uploadPayment = async (
             error.statusCode = 404;
             throw error;
         }
-        if (order.status_order !== "pending_payment")  {
+        if (order.status_order !== "menunggu_konfirmasi")  {
             const error = new Error("Pesanan belum dapat melakukan pembayaran");
             error.statusCode = 400;
             throw error;
@@ -64,7 +64,7 @@ const uploadPayment = async (
                 }
             );
         }
-        order.status = "pembayaran_diperiksa";
+        order.status_order = "pembayaran_diperiksa";
         await order.save({
             transaction,
         });
@@ -111,7 +111,7 @@ const verifyPayment = async (
             error.statusCode = 404;
             throw error;
         }
-        if (order.status_order !== "pending_payment") {
+        if (order.status_order !== "menunggu_pembayaran") {
             const error = new Error("Pesanan belum berada pada tahap pemeriksaan pembayaran");
             error.statusCode = 400;
             throw error;
@@ -165,7 +165,7 @@ const verifyPayment = async (
             payment.verified_by = id_admin;
             payment.verified_at = new Date();
             payment.catatan_verifikasi = catatan_verifikasi || null;
-            order.status = "diproses";
+            order.status_order = "diproses";
         }
         if (status_payment === "rejected") {
             if (
@@ -180,7 +180,7 @@ const verifyPayment = async (
             payment.verified_by = id_admin;
             payment.verified_at = new Date();
             payment.catatan_verifikasi = catatan_verifikasi;
-            order.status_order = "cancelled";
+            order.status_order = "dibatalkan";
         }
         await payment.save({
             transaction,

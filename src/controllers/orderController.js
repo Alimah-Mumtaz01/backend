@@ -71,9 +71,57 @@ const updateShipping = async (req, res) => {
     }
 };
 
+const updateOrderStatus = async (req, res) => {
+    try {
+        const {id_order} = req.params;
+        const {status_order} = req.body;
+        if (
+            typeof status_order !== "string" || status_order.trim() === ""
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "status order wajib diisi"
+            });
+        }
+        const order = await orderService.updateOrderStatus(id_order, status_order);
+        return res.status(200).json({
+            success: true,
+            message: "Status order berhasil diperbarui",
+            data: order,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message || "Terjadi kesalahan pada server",
+        });
+    }
+};
+
+const getMyOrderStatus = async (req, res) => {
+    try {
+        const {id_order} = req.params;
+        const id_user = req.user.id_user;
+        const order = await orderService.getOrderStatusByUser(id_order, id_user);
+        return res.status(200).json({
+            success: true,
+            message: "status order berhasil diambil",
+            data: order
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message || "Terjadi kesalahan pada server",
+        });
+    }
+};
+
 module.exports = {
     createOrder,
     getMyOrders,
     getMyOrderById,
-    updateShipping
+    updateShipping,
+    updateOrderStatus,
+    getMyOrderStatus
 };
