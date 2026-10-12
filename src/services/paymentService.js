@@ -1,4 +1,4 @@
-const {sequelize, Payment, Order, OrderItem, OrderItemVariant, Varian, User} = require("../models");
+const {sequelize, Payment, Order, OrderItem, OrderItemVariant, Varian} = require("../models");
 
 const uploadPayment = async (
     id_user, 
@@ -8,7 +8,7 @@ const uploadPayment = async (
 ) => {
     const transaction = await sequelize.transaction();
     try {
-        const order = await order.findone({
+        const order = await Order.findOne({
             where: {
                 id_order,
                 id_user
@@ -20,7 +20,7 @@ const uploadPayment = async (
             error.statusCode = 404;
             throw error;
         }
-        if (order.status_order !== "menunggu_konfirmasi")  {
+        if (order.status_order !== "menunggu_pembayaran")  {
             const error = new Error("Pesanan belum dapat melakukan pembayaran");
             error.statusCode = 400;
             throw error;
@@ -30,7 +30,7 @@ const uploadPayment = async (
             error.statusCode = 400;
             throw error;
         }
-        let payment = await Payment.findone({
+        let payment = await Payment.findOne({
             where: {
                 id_order,
             },
@@ -84,7 +84,7 @@ const verifyPayment = async (
 ) => {
     const transaction = await sequelize.transaction();
     try {
-        const payment = await Payment.findone({
+        const payment = await Payment.findOne({
             where: {
                 id_order
             },
@@ -100,7 +100,7 @@ const verifyPayment = async (
             error.statusCode = 400;
             throw error;
         }
-        const order = await Order.findone({
+        const order = await Order.findOne({
             where: {
                 id_order,
             },
@@ -111,7 +111,7 @@ const verifyPayment = async (
             error.statusCode = 404;
             throw error;
         }
-        if (order.status_order !== "menunggu_pembayaran") {
+        if (order.status_order !== "pembayaran_diperiksa") {
             const error = new Error("Pesanan belum berada pada tahap pemeriksaan pembayaran");
             error.statusCode = 400;
             throw error;
@@ -138,7 +138,7 @@ const verifyPayment = async (
             });
             for (const orderItem of orderItems) {
                 for (const itemVariant of orderItem.variants) {
-                    const varian = await varian.findOne({
+                    const varian = await Varian.findOne({
                         where: {
                             id_varian: itemVariant.id_varian,
                         },
@@ -180,7 +180,7 @@ const verifyPayment = async (
             payment.verified_by = id_admin;
             payment.verified_at = new Date();
             payment.catatan_verifikasi = catatan_verifikasi;
-            order.status_order = "dibatalkan";
+            order.status_order = "pembayaran_ditolak";
         }
         await payment.save({
             transaction,
