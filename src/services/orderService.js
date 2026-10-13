@@ -87,7 +87,7 @@ const createOrder = async (id_user, orderData) => {
                 error.statusCode = 400;
                 throw error;
             }
-            ongkir = 0;
+            ongkir = Number(env.deliveryFee);
         }
         const total_harga = subtotal + ongkir;
         const order = await Order.create({
@@ -265,7 +265,7 @@ const allowedTransitions = {
     menunggu_pembayaran: [
         "dibatalkan"
     ],
-    diprosess: [
+    diproses: [
         "siap_diambil",
         "sedang_dikirim"
     ],
@@ -321,7 +321,7 @@ const updateOrderStatus = async (id_order, status_order_baru) => {
                 transaction,
                 lock: transaction.LOCK.UPDATE,
             });
-            if (payment && payment.status.payment === "verified") {
+            if (payment && payment.status_payment === "verified") {
                 const error = new Error("Order dengan pembayaran terverifikasi tidak dapat dibatalkan melalui endpoint ini");
                 error.statusCode = 400;
                 throw error;
