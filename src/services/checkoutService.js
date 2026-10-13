@@ -96,7 +96,7 @@ const previewCheckout = async (orderData) => {
                 error.statusCode = 400;
                 throw error;
             }
-            ongkir = 0;
+            ongkir = Number(env.deliveryFee);
         }
         const total_harga = subtotal + ongkir;
         return {
