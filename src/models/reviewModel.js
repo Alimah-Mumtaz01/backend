@@ -21,6 +21,11 @@ const defineReviewModel = (sequelize) => {
                 unique: true,
             },
 
+            id_product: {
+                type: DataTypes.INTEGER,
+                allowNull: false
+            },
+
             rating: {
                 type: DataTypes.INTEGER,
                 allowNull: false,
@@ -54,6 +59,11 @@ const defineReviewModel = (sequelize) => {
             as: "order",
             onUpdate: "CASCADE",
             onDelete: "CASCADE",
+        });
+
+        Review.belongsTo(models.Product, {
+            foreignKey: "id_product",
+            as: "product"
         });
 
         Review.hasMany(models.ReviewImage, {
