@@ -60,6 +60,11 @@ const defineProductModel = (sequelize) => {
             onUpdate: "CASCADE",
             onDelete: "RESTRICT",
         });
+
+        Product.hasMany(models.Review, {
+            foreignKey: "id_product",
+            as: "reviews"
+        });
     };
     return Product;
 };
