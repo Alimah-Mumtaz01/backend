@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const reviewController = require("../controllers/reviewController");
 const authMiddleware = require("../middleware/authMiddleware");
-const uploadReview = require("../middleware/reviewUploadMiddleware");
+const {uploadReview} = require("../middleware/reviewUploadMiddleware");
 
 router.get("/", reviewController.getReviews);
 router.get("/:id_review", reviewController.getReviewById);

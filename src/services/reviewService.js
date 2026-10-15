@@ -39,7 +39,7 @@ const createReview = async (id_user, reviewData, files = []) => {
             error.statusCode = 400;
             throw error;
         }
-        const product = await Product.findByPK(id_product, {transaction});
+        const product = await Product.findByPk(id_product, {transaction});
         if (!product) {
             const error = new Error("Produk tidak ditemukan");
             error.statusCode = 404;
@@ -82,7 +82,7 @@ const createReview = async (id_user, reviewData, files = []) => {
 };
 
 const getReviewById = async (id_review) => {
-    const review = await Review.findByPK(id_review, {
+    const review = await Review.findByPk(id_review, {
         include: [
             {
                 model: User,
@@ -130,7 +130,7 @@ const getReviews = async (id_product = null) => {
             {
                 model: ReviewImage,
                 as: "images",
-                attributes: ["id_review_image", "gambar"]
+                attributes: ["id_review_image", "image"]
             }
         ],
         order: [["createdAt", "DESC"]]
@@ -163,7 +163,7 @@ const updateReview = async (id_review, id_user, reviewData, files = []) => {
             error.statusCode = 404;
             throw error;
         }
-        const order = await Order.findByPK(review.id_order, {transaction});
+        const order = await Order.findByPk(review.id_order, {transaction});
         if (!order || order.status_order !== "selesai") {
             const error = new Error("Review hanya dapat diubah untuk pesanan yang sudah selesai");
             error.statusCode = 400;
@@ -204,7 +204,6 @@ const updateReview = async (id_review, id_user, reviewData, files = []) => {
 
 const deleteReview = async (id_review, id_user) => {
     const transaction = await sequelize.transaction();
-
     try {
         const review = await Review.findOne({
             where: {id_review, id_user},
@@ -231,7 +230,6 @@ const deleteReview = async (id_review, id_user) => {
 
 const getProductRating = async (id_product) => {
     const product = await Product.findByPk(id_product);
-
     if (!product) {
         const error = new Error("Produk tidak ditemukan");
         error.statusCode = 404;
