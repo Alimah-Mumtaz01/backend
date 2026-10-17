@@ -10,6 +10,7 @@ const varianRoutes = require("./routes/varianRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const checkoutRoutes = require("./routes/checkoutRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 const env = require("./config/env");
 
 app.use(express.json());
@@ -20,6 +21,7 @@ app.use("/orders", orderRoutes);
 app.use("/checkout", checkoutRoutes);
 app.use("/varian", varianRoutes);
 app.use("/reviews", reviewRoutes);
+app.use("/admin/dashboard", dashboardRoutes);
 app.use(helmet());
 app.use(
     cors({
