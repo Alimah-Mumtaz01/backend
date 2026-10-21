@@ -10,7 +10,7 @@ const previewCheckout = async (req, res) => {
         });
     } catch (error) {
         console.error('PREVIEW CHECKOUT ERROR:', error);
-        return res.status(400).json({
+        return res.status(error.statusCode || 400).json({
             success: false,
             message: error.message
         });
