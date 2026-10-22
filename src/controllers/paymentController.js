@@ -5,17 +5,6 @@ const uploadPayment = async (req, res) => {
         const id_user = req.user.id_user;
         const {id_order} = req.params;
         const {metode_pembayaran} = req.body;
-
-        if (
-            !["transfer_bank", "e-wallet"].includes(
-                metode_pembayaran
-            )
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "Metode pembayaran harus Transfer Bank atau E-Wallet",
-            });
-        }
         if (!req.file) {
             return res.status(400).json({
                 success: false,

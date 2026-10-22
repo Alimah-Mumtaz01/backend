@@ -116,13 +116,6 @@ const verifyPayment = async (
             error.statusCode = 400;
             throw error;
         }
-        if (
-            !["verified", "rejected"].includes(status_payment)
-        ) {
-            const error = new Error("Status pembayaran tidak valid");
-            error.statusCode = 400;
-            throw error;
-        }
         if (status_payment === "verified") {
             const orderItems = await OrderItem.findAll({
                 where: {
@@ -168,14 +161,6 @@ const verifyPayment = async (
             order.status_order = "diproses";
         }
         if (status_payment === "rejected") {
-            if (
-                !catatan_verifikasi ||
-                catatan_verifikasi.trim() === ""
-            ) {
-                const error = new Error("Alasan penolakan pembayaran harus diisi");
-                error.statusCode = 400;
-                throw error;
-            }
             payment.status_payment = "rejected";
             payment.verified_by = id_admin;
             payment.verified_at = new Date();
