@@ -4,17 +4,6 @@ const createReview = async (id_user, reviewData, files = []) => {
     const transaction = await sequelize.transaction();
     try {
         const {id_order, id_product, rating, komentar} = reviewData;
-        const ratingNumber = Number(rating);
-        if (!Number.isInteger(ratingNumber) || ratingNumber < 1 || ratingNumber > 5) {
-            const error = new Error("Rating harus berupa angka dari 1 sampai 5");
-            error.statusCode = 400;
-            throw error;
-        }
-        if (files.length > 3) {
-            const error = new Error("Foto review maksimal 3 gambar");
-            error.statusCode = 400;
-            throw error;
-        }
         const order = await Order.findOne({
             where: {id_order, id_user},
             transaction,
@@ -59,7 +48,7 @@ const createReview = async (id_user, reviewData, files = []) => {
                 id_user,
                 id_order,
                 id_product,
-                rating: ratingNumber,
+                rating,
                 komentar: komentar?.trim() || null
             },
             {transaction}
@@ -142,17 +131,6 @@ const updateReview = async (id_review, id_user, reviewData, files = []) => {
     const transaction = await sequelize.transaction();
     try {
         const {rating, komentar} = reviewData;
-        const ratingNumber = Number(rating);
-        if (!Number.isInteger(ratingNumber) || ratingNumber < 1 || ratingNumber > 5) {
-            const error = new Error("Rating harus berupa angka dari 1 sampai 5");
-            error.statusCode = 400;
-            throw error;
-        }
-        if (files.length > 3) {
-            const error = new Error("Foto review maksimal 3 gambar");
-            error.statusCode = 400;
-            throw error;
-        }
         const review = await Review.findOne({
             where: {id_review, id_user},
             transaction,
@@ -171,7 +149,7 @@ const updateReview = async (id_review, id_user, reviewData, files = []) => {
         }
         await review.update(
             {
-                rating: ratingNumber,
+                rating,
                 komentar: komentar?.trim() || null
             },
             {transaction}
