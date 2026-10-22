@@ -52,6 +52,7 @@ const orderItemSchema = Joi.object({
         .min(1)
         .required()
         .messages({
+            'array.base': 'variants harus berupa array',
             'array.min': 'Minimal pilih satu variant',
             'any.required': 'Variant harus diisi'
         })
@@ -66,9 +67,25 @@ const createOrderSchema = Joi.object({
             'any.required': 'Tipe pengiriman harus diisi'
         }),
 
-    alamat_pengiriman: Joi.string()
-        .max(500)
-        .allow('', null),
+    alamat_pengiriman: Joi.when('tipe_pengiriman', {
+        is: 'delivery',
+        then: Joi.string()
+            .trim()
+            .min(1)
+            .max(500)
+            .required()
+            .messages({
+                'string.empty': 'Alamat pengiriman harus diisi untuk tipe delivery',
+                'any.required': 'Alamat pengiriman harus diisi untuk tipe delivery',
+                'string.max': 'Alamat pengiriman maksimal 500 karakter'
+            }),
+        otherwise: Joi.string()
+            .allow('', null)
+            .max(500)
+            .messages({
+                'string.max': 'Alamat pengiriman maksimal 500 karakter'
+            })
+    }),
 
     catatan: Joi.string()
         .max(1000)
@@ -79,6 +96,7 @@ const createOrderSchema = Joi.object({
         .min(1)
         .required()
         .messages({
+            'array.base': 'items harus berupa array',
             'array.min': 'Keranjang tidak boleh kosong',
             'any.required': 'Item order harus diisi'
         })
@@ -93,12 +111,51 @@ const updateShippingSchema = Joi.object({
             'any.required': 'Tipe pengiriman harus diisi'
         }),
         
-    alamat_pengiriman: Joi.string()
-        .max(500)
-        .allow('', null)
+    alamat_pengiriman: Joi.when('tipe_pengiriman', {
+        is: 'delivery',
+        then: Joi.string()
+            .trim()
+            .min(1)
+            .max(500)
+            .required()
+            .messages({
+                'string.empty': 'Alamat pengiriman harus diisi untuk tipe delivery',
+                'any.required': 'Alamat pengiriman harus diisi untuk tipe delivery',
+                'string.max': 'Alamat pengiriman maksimal 500 karakter'
+            }),
+        otherwise: Joi.string()
+            .allow('', null)
+            .max(500)
+            .messages({
+                'string.max': 'Alamat pengiriman maksimal 500 karakter'
+            })
+    })
+});
+
+const updateOrderStatusSchema = Joi.object({
+    status_order: Joi.string()
+        .valid(
+            'menunggu_konfirmasi',
+            'pesanan_diterima',
+            'menunggu_pembayaran',
+            'pembayaran_diperiksa',
+            'pembayaran_ditolak',
+            'dibatalkan',
+            'diproses',
+            'siap_diambil',
+            'sedang_dikirim',
+            'selesai'
+        )
+        .required()
+        .messages({
+            'any.only': 'Status order tidak valid',
+            'any.required': 'Status order wajib diisi',
+            'string.empty': 'Status order wajib diisi'
+        })
 });
 
 module.exports = {
     createOrderSchema,
-    updateShippingSchema
+    updateShippingSchema,
+    updateOrderStatusSchema
 };

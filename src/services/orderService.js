@@ -5,16 +5,6 @@ const createOrder = async (id_user, orderData) => {
     const transaction = await sequelize.transaction();
     try {
         const {tipe_pengiriman, alamat_pengiriman, catatan, items} = orderData;
-        if (!items || items.length === 0) {
-            const error = new Error("Minimal harus ada satu produk dalam pesanan");
-            error.statusCode = 400;
-            throw error;
-        }
-        if (tipe_pengiriman === 'delivery' && !alamat_pengiriman) {
-            const error = new Error("Alamat pengiriman harus diisi untuk tipe pengiriman delivery");
-            error.statusCode = 400;
-            throw error;
-        }
         let subtotal = 0;
         const preparedItems = [];
         for (const item of items) {
@@ -26,16 +16,6 @@ const createOrder = async (id_user, orderData) => {
             }
             if (product.status !== 'aktif') {
                 const error = new Error(`Produk ${product.nama_product} sedang tidak aktif`);
-                error.statusCode = 400;
-                throw error;
-            }
-            if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-                const error = new Error(`Quantity produk ${product.nama_product} tidak valid`);
-                error.statusCode = 400;
-                throw error;
-            }
-            if (!item.variants || item.variants.length === 0) {
-                const error = new Error(`Varian untuk produk ${product.nama_product} harus dipilih`);
                 error.statusCode = 400;
                 throw error;
             }
@@ -222,9 +202,6 @@ const updateShipping = async (id_order, id_user, shippingData) => {
             alamatPengiriman = null;
         }
         if (tipe_pengiriman === 'delivery') {
-            if (!alamat_pengiriman || alamat_pengiriman.trim().length === 0) {
-                throw new Error("Alamat pengiriman harus diisi untuk tipe pengiriman delivery");
-            }
             if (subtotal < 50000) {
                 throw new Error("Minimal pembelian untuk pengiriman delivery adalah Rp 50.000");
             }

@@ -75,14 +75,6 @@ const updateOrderStatus = async (req, res) => {
     try {
         const {id_order} = req.params;
         const {status_order} = req.body;
-        if (
-            typeof status_order !== "string" || status_order.trim() === ""
-        ) {
-            return res.status(400).json({
-                success: false,
-                message: "status order wajib diisi"
-            });
-        }
         const order = await orderService.updateOrderStatus(id_order, status_order);
         return res.status(200).json({
             success: true,
