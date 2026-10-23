@@ -62,7 +62,9 @@ const getPeriodWhere = (startDate, endDate) => ({
 const getCompletedOrders = async (startDate, endDate) => {
     return Order.findAll({
         where: {
-            ...getPeriodWhere(startDate, endDate),
+            updatedAt: {
+                [Op.between]: [startDate, endDate]
+            },
             status_order: STATUS_SELESAI
         },
         attributes: [
@@ -70,9 +72,9 @@ const getCompletedOrders = async (startDate, endDate) => {
             "id_user",
             "total_harga",
             "status_order",
-            "createdAt"
+            "updatedAt"
         ],
-        order: [["createdAt", "ASC"]]
+        order: [["updatedAt", "ASC"]]
     });
 };
 const getSalesReport = async (query = {}) => {
@@ -95,7 +97,7 @@ const getSalesReport = async (query = {}) => {
             currentDate.setDate(currentDate.getDate() + 1);
         }
         completedOrders.forEach((order) => {
-            const tanggal = formatDate(new Date(order.createdAt));
+            const tanggal = formatDate(new Date(order.updatedAt));
             if (!salesMap[tanggal]) {
                 salesMap[tanggal] = {
                     tanggal,
