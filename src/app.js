@@ -15,6 +15,11 @@ const reportRoutes = require("./routes/reportRoutes");
 const env = require("./config/env");
 
 app.use(express.json());
+app.use(
+    cors({
+        origin: env.frontendUrl,
+    })
+);
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/products", productRoutes);
@@ -25,11 +30,6 @@ app.use("/reviews", reviewRoutes);
 app.use("/admin/dashboard", dashboardRoutes);
 app.use("/admin/reports", reportRoutes);
 app.use(helmet());
-app.use(
-    cors({
-        origin: env.frontendUrl,
-    })
-);
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
