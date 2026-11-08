@@ -7,11 +7,13 @@ const createReview = async (req, res) => {
             req.body,
             req.files || []
         );
+
         return res.status(201).json({
             success: true,
             message: "Review berhasil dibuat",
             data: review
         });
+
     } catch (error) {
         return res.status(error.statusCode || 500).json({
             success: false,
@@ -22,15 +24,18 @@ const createReview = async (req, res) => {
 
 const getReviews = async (req, res) => {
     try {
-        const {id_product} = req.query;
+        const { id_product } = req.query;
+
         const reviews = await reviewService.getReviews(
             id_product || null
         );
+
         return res.status(200).json({
             success: true,
             message: "Data review berhasil diambil",
             data: reviews
         });
+
     } catch (error) {
         return res.status(error.statusCode || 500).json({
             success: false,
@@ -39,14 +44,38 @@ const getReviews = async (req, res) => {
     }
 };
 
+const getMyReviews = async (req, res) => {
+    try {
+        const reviews = await reviewService.getMyReviews(
+            req.user.id_user
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Data ulasan saya berhasil diambil",
+            data: reviews
+        });
+
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message || "Gagal mengambil ulasan saya"
+        });
+    }
+};
+
 const getReviewById = async (req, res) => {
     try {
-        const review = await reviewService.getReviewById(req.params.id_review);
+        const review = await reviewService.getReviewById(
+            req.params.id_review
+        );
+
         return res.status(200).json({
             success: true,
             message: "Review berhasil diambil",
             data: review
         });
+
     } catch (error) {
         return res.status(error.statusCode || 500).json({
             success: false,
@@ -63,11 +92,13 @@ const updateReview = async (req, res) => {
             req.body,
             req.files || []
         );
+
         return res.status(200).json({
             success: true,
             message: "Review berhasil diperbarui",
             data: review
         });
+
     } catch (error) {
         return res.status(error.statusCode || 500).json({
             success: false,
@@ -82,10 +113,12 @@ const deleteReview = async (req, res) => {
             req.params.id_review,
             req.user.id_user
         );
+
         return res.status(200).json({
             success: true,
             message: result.message
         });
+
     } catch (error) {
         return res.status(error.statusCode || 500).json({
             success: false,
@@ -96,12 +129,16 @@ const deleteReview = async (req, res) => {
 
 const getProductRating = async (req, res) => {
     try {
-        const result = await reviewService.getProductRating(req.params.id_product);
+        const result = await reviewService.getProductRating(
+            req.params.id_product
+        );
+
         return res.status(200).json({
             success: true,
             message: "Rating produk berhasil diambil",
             data: result
         });
+
     } catch (error) {
         return res.status(error.statusCode || 500).json({
             success: false,
@@ -113,8 +150,9 @@ const getProductRating = async (req, res) => {
 module.exports = {
     createReview,
     getReviews,
+    getMyReviews,
     getReviewById,
     updateReview,
     deleteReview,
     getProductRating
-}
+};
