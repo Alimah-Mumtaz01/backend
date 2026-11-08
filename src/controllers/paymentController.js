@@ -15,7 +15,7 @@ const uploadPayment = async (req, res) => {
             id_user,
             id_order,
             metode_pembayaran,
-            req.file.filename
+            `uploads/payments/${req.file.filename}`
         );
         return res.status(201).json({
             success: true,
