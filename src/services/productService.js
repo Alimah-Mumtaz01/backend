@@ -1,37 +1,33 @@
-const {Product, sequelize} = require("../models");
+const { Product, sequelize } = require("../models");
 
 const getAllProducts = async () => {
-    try {
-        const products = await Product.findAll({
-            order: [["id_product", "ASC"]],
-        });
-        return products;
-    } catch (error) {
-        throw error;
-    }
+    return await Product.findAll({
+        order: [["id_product", "ASC"]]
+    });
 };
 
 const getProductById = async (id_product) => {
-    try {
-        const product = await Product.findByPk(id_product);
-        if (!product) {
-            const error = new Error("Produk tidak ditemukan");
-            error.statusCode = 404;
-            throw error;
-        }
-        return product;
-    } catch (error) {
+    const product = await Product.findByPk(id_product);
+
+    if (!product) {
+        const error = new Error("Produk tidak ditemukan");
+        error.statusCode = 404;
         throw error;
     }
+
+    return product;
 };
 
 const createProduct = async (productData) => {
     const transaction = await sequelize.transaction();
+
     try {
         const product = await Product.create(productData, {
-            transaction,
+            transaction
         });
+
         await transaction.commit();
+
         return product;
     } catch (error) {
         await transaction.rollback();
@@ -41,19 +37,24 @@ const createProduct = async (productData) => {
 
 const updateProduct = async (id_product, productData) => {
     const transaction = await sequelize.transaction();
+
     try {
         const product = await Product.findByPk(id_product, {
-            transaction,
+            transaction
         });
+
         if (!product) {
-            const error = new Error ("Product tidak ditemukan");
+            const error = new Error("Produk tidak ditemukan");
             error.statusCode = 404;
             throw error;
         }
+
         await product.update(productData, {
-            transaction,
+            transaction
         });
+
         await transaction.commit();
+
         return product;
     } catch (error) {
         await transaction.rollback();
@@ -63,21 +64,40 @@ const updateProduct = async (id_product, productData) => {
 
 const deleteProduct = async (id_product) => {
     const transaction = await sequelize.transaction();
+
     try {
         const product = await Product.findByPk(id_product, {
-            transaction,
+            transaction
         });
+
         if (!product) {
-            const error = new Error ("Product tidak ditemukan");
+            const error = new Error("Produk tidak ditemukan");
             error.statusCode = 404;
             throw error;
         }
+
         await product.destroy({
-            transaction,
+            transaction
         });
+
         await transaction.commit();
+
+        return product;
     } catch (error) {
         await transaction.rollback();
+
+        if (
+            error.name === "SequelizeForeignKeyConstraintError"
+        ) {
+            const conflict = new Error(
+                "Produk tidak dapat dihapus karena sudah digunakan dalam transaksi. Silakan ubah status produk menjadi nonaktif."
+            );
+
+            conflict.statusCode = 409;
+
+            throw conflict;
+        }
+
         throw error;
     }
 };
@@ -88,4 +108,4 @@ module.exports = {
     createProduct,
     updateProduct,
     deleteProduct
-}
+};
