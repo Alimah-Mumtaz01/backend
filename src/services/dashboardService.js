@@ -29,7 +29,7 @@ const getDashboardData = async (query = {}) => {
         }
         const periodWhere = {
             status_order: "selesai",
-            createdAt: {
+            updatedAt: {
                 [Op.between]: [startDate, endDate]
             }
         };
@@ -91,9 +91,9 @@ const getDashboardData = async (query = {}) => {
                 attributes: [
                     "id_order",
                     "total_harga",
-                    "createdAt"
+                    "updatedAt"
                 ],
-                order: [["createdAt", "ASC"]]
+                order: [["updatedAt", "ASC"]]
             }),
             Order.findAll({
                 attributes: [
@@ -125,7 +125,7 @@ const getDashboardData = async (query = {}) => {
             cursor.setDate(cursor.getDate() + 1);
         }
         for (const order of penjualanPeriode) {
-            const dateKey = formatDate(new Date(order.createdAt));
+            const dateKey = formatDate(new Date(order.updatedAt));
             if (Object.prototype.hasOwnProperty.call(salesMap, dateKey)) {
                 salesMap[dateKey] += Number(order.total_harga || 0);
             }
