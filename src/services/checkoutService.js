@@ -60,6 +60,7 @@ const previewCheckout = async (orderData) => {
             product: {
                 id_product: product.id_product,
                 nama_product: product.nama_product,
+                gambar: product.gambar,
                 jumlah_isi: Number(product.jumlah_isi),
                 quantity: item.quantity,
                 harga_satuan: hargaSatuan,
