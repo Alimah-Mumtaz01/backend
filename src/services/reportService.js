@@ -218,6 +218,7 @@ const getProductsReport = async (query = {}) => {
                 salesMap.set(id, {
                     id_product: id,
                     nama_product: product.nama_product,
+                    gambar: product.gambar,
                     jumlah_paket_terjual: 0,
                     total_penjualan: 0
                 });
