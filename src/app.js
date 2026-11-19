@@ -13,6 +13,7 @@ const checkoutRoutes = require("./routes/checkoutRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const shippingRoutes = require("./routes/shippingRoutes");
 const env = require("./config/env");
 const path = require("path");
 
@@ -33,6 +34,7 @@ app.use("/users", userRoutes);
 app.use("/admin/customers", customerRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
+app.use("/shipping", shippingRoutes);
 app.use("/checkout", checkoutRoutes);
 app.use("/varian", varianRoutes);
 app.use("/reviews", reviewRoutes);
