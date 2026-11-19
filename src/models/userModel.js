@@ -48,6 +48,15 @@ const defineUserModel = (sequelize) => {
     );
 
     User.associate = (models) => {
+        // Relasi user dengan alamat utama
+        User.hasOne(models.Address, {
+            foreignKey: "id_user",
+            as: "address",
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+        });
+
+        // Relasi user dengan pesanan
         User.hasMany(models.Order, {
             foreignKey: "id_user",
             as: "orders",
@@ -55,6 +64,7 @@ const defineUserModel = (sequelize) => {
             onDelete: "RESTRICT",
         });
 
+        // Relasi user dengan ulasan
         User.hasMany(models.Review, {
             foreignKey: "id_user",
             as: "reviews",
@@ -62,6 +72,7 @@ const defineUserModel = (sequelize) => {
             onDelete: "RESTRICT",
         });
 
+        // Relasi user dengan pembayaran yang diverifikasi
         User.hasMany(models.Payment, {
             foreignKey: "verified_by",
             as: "verifiedPayments",
@@ -69,6 +80,7 @@ const defineUserModel = (sequelize) => {
             onDelete: "SET NULL",
         });
     };
+
     return User;
 };
 
