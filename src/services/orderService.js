@@ -7,10 +7,15 @@ const {
     Product,
     Varian,
     Payment,
-    Review,
+    Review
 } = require('../models');
 
 const env = require('../config/env');
+
+const {
+    resolveDeliveryDetails
+} = require('./deliveryService');
+
 
 const createOrder = async (id_user, orderData) => {
     const transaction = await sequelize.transaction();
@@ -18,13 +23,21 @@ const createOrder = async (id_user, orderData) => {
     try {
         const {
             tipe_pengiriman,
+            address_source,
+            nama_penerima,
+            no_hp_penerima,
             alamat_pengiriman,
+            catatan_alamat_pengiriman,
             catatan,
-            items,
+            items
         } = orderData;
 
         let subtotal = 0;
         const preparedItems = [];
+
+        // ========================================
+        // 1. VALIDASI PRODUK DAN VARIAN
+        // ========================================
 
         for (const item of items) {
             const product = await Product.findByPk(
@@ -49,14 +62,19 @@ const createOrder = async (id_user, orderData) => {
             }
 
             const expectedVariantAmount =
-                Number(product.jumlah_isi) * Number(item.quantity);
+                Number(product.jumlah_isi) *
+                Number(item.quantity);
 
-            const selectedVariantAmount = item.variants.reduce(
-                (total, variant) => total + Number(variant.jumlah),
-                0
-            );
+            const selectedVariantAmount =
+                item.variants.reduce(
+                    (total, variant) =>
+                        total + Number(variant.jumlah),
+                    0
+                );
 
-            if (selectedVariantAmount !== expectedVariantAmount) {
+            if (
+                selectedVariantAmount !== expectedVariantAmount
+            ) {
                 const error = new Error(
                     `Jumlah variant untuk produk ${product.nama_product} harus ${expectedVariantAmount} pcs`
                 );
@@ -88,7 +106,10 @@ const createOrder = async (id_user, orderData) => {
                     throw error;
                 }
 
-                if (varian.stok < itemVariant.jumlah) {
+                if (
+                    Number(varian.stok) <
+                    Number(itemVariant.jumlah)
+                ) {
                     const error = new Error(
                         `Stok varian ${varian.nama_varian} tidak mencukupi`
                     );
@@ -98,11 +119,12 @@ const createOrder = async (id_user, orderData) => {
 
                 preparedVariants.push({
                     id_varian: varian.id_varian,
-                    jumlah: itemVariant.jumlah,
+                    jumlah: itemVariant.jumlah
                 });
             }
 
             const hargaSatuan = Number(product.harga);
+
             const totalHargaItem =
                 hargaSatuan * Number(item.quantity);
 
@@ -113,72 +135,128 @@ const createOrder = async (id_user, orderData) => {
                 quantity: item.quantity,
                 harga_satuan: hargaSatuan,
                 total_harga: totalHargaItem,
-                variants: preparedVariants,
+                variants: preparedVariants
             });
         }
 
+        // ========================================
+        // 2. MENGHITUNG ONGKIR
+        // ========================================
+
         let ongkir = 0;
+        let deliveryDetails = null;
 
         if (tipe_pengiriman === 'delivery') {
+
+            // Minimal pembelian delivery Rp50.000.
             if (subtotal < 50000) {
                 const error = new Error(
-                    'Minimal pembelian untuk pengiriman delivery adalah Rp 50.000'
+                    "Minimal pembelian untuk pengiriman delivery adalah Rp 50.000"
                 );
                 error.statusCode = 400;
                 throw error;
             }
 
-            ongkir = Number(env.deliveryFee);
+            deliveryDetails = await resolveDeliveryDetails(
+                id_user,
+                {
+                    address_source,
+                    nama_penerima,
+                    no_hp_penerima,
+                    alamat_pengiriman,
+                    catatan_alamat_pengiriman
+                },
+                {
+                    transaction
+                }
+            );
+
+            ongkir = Number(deliveryDetails.ongkir);
         }
+
+        // ========================================
+        // 3. MENGHITUNG TOTAL PESANAN
+        // ========================================
 
         const total_harga = subtotal + ongkir;
 
-        const order = await Order.create(
-            {
-                id_user,
-                tipe_pengiriman,
-                alamat_pengiriman:
-                    tipe_pengiriman === 'delivery'
-                        ? alamat_pengiriman
-                        : null,
-                catatan,
-                subtotal,
-                ongkir,
-                total_harga,
-                status_order: 'menunggu_konfirmasi',
-            },
-            { transaction }
-        );
+        // ========================================
+        // 4. MENYIMPAN PESANAN
+        // ========================================
+
+        const order = await Order.create({
+            id_user,
+
+            tipe_pengiriman,
+
+            alamat_pengiriman:
+                deliveryDetails?.alamat_pengiriman || null,
+
+            catatan_alamat_pengiriman:
+                deliveryDetails?.catatan_alamat_pengiriman || null,
+
+            nama_penerima:
+                deliveryDetails?.nama_penerima || null,
+
+            no_hp_penerima:
+                deliveryDetails?.no_hp_penerima || null,
+
+            latitude_pengiriman:
+                deliveryDetails?.latitude_pengiriman ?? null,
+
+            longitude_pengiriman:
+                deliveryDetails?.longitude_pengiriman ?? null,
+
+            jarak_pengiriman:
+                deliveryDetails?.jarak_pengiriman ?? null,
+
+            catatan: catatan || null,
+
+            subtotal,
+            ongkir,
+            total_harga,
+
+            status_order: 'menunggu_konfirmasi'
+
+        }, { transaction });
+
+        // ========================================
+        // 5. MENYIMPAN ITEM PESANAN
+        // ========================================
 
         for (const item of preparedItems) {
-            const orderItem = await OrderItem.create(
-                {
-                    id_order: order.id_order,
-                    id_product: item.product.id_product,
-                    quantity: item.quantity,
-                    harga_satuan: item.harga_satuan,
-                    total_harga: item.total_harga,
-                },
-                { transaction }
-            );
+            const orderItem = await OrderItem.create({
+                id_order: order.id_order,
+                id_product: item.product.id_product,
+                quantity: item.quantity,
+                harga_satuan: item.harga_satuan,
+                total_harga: item.total_harga
+            }, { transaction });
 
             for (const variant of item.variants) {
-                await OrderItemVariant.create(
-                    {
-                        id_order_item: orderItem.id_order_item,
-                        id_varian: variant.id_varian,
-                        jumlah: variant.jumlah,
-                    },
-                    { transaction }
-                );
+                await OrderItemVariant.create({
+                    id_order_item: orderItem.id_order_item,
+                    id_varian: variant.id_varian,
+                    jumlah: variant.jumlah
+                }, { transaction });
             }
         }
 
+        // ========================================
+        // 6. COMMIT TRANSAKSI
+        // ========================================
+
         await transaction.commit();
 
-        return getOrderById(order.id_order, id_user);
+        return getOrderById(
+            order.id_order,
+            id_user
+        );
+
     } catch (error) {
+
         await transaction.rollback();
+
         throw error;
     }
 };
@@ -386,9 +464,14 @@ const updateShipping = async (
     try {
         const {
             tipe_pengiriman,
+            address_source,
+            nama_penerima,
+            no_hp_penerima,
             alamat_pengiriman,
+            catatan_alamat_pengiriman
         } = shippingData;
 
+        // 1. Mencari pesanan berdasarkan ID pesanan dan customer.
         const order = await Order.findOne({
             where: {
                 id_order,
@@ -404,55 +487,114 @@ const updateShipping = async (
             throw error;
         }
 
+        // 2. Memastikan status pesanan masih dapat diubah.
         if (order.status_order !== 'menunggu_konfirmasi') {
-            throw new Error(
+            const error = new Error(
                 "Metode pengiriman hanya dapat diubah saat status order adalah 'menunggu_konfirmasi'"
             );
+
+            error.statusCode = 400;
+            throw error;
         }
 
         const subtotal = Number(order.subtotal);
 
         let ongkir = 0;
-        let alamatPengiriman = null;
+        let deliveryDetails = null;
 
+        // 3. Memproses pilihan pengiriman.
         if (tipe_pengiriman === 'pickup') {
             ongkir = 0;
-            alamatPengiriman = null;
-        }
+        } else if (tipe_pengiriman === 'delivery') {
 
-        if (tipe_pengiriman === 'delivery') {
+            // Memeriksa minimal pembelian.
             if (subtotal < 50000) {
-                throw new Error(
+                const error = new Error(
                     'Minimal pembelian untuk pengiriman delivery adalah Rp 50.000'
                 );
+
+                error.statusCode = 400;
+                throw error;
             }
 
-            ongkir = env.deliveryFee;
-            alamatPengiriman = alamat_pengiriman.trim();
+            // Mengambil alamat dan menghitung ongkir terbaru.
+            deliveryDetails = await resolveDeliveryDetails(
+                id_user,
+                {
+                    address_source,
+                    nama_penerima,
+                    no_hp_penerima,
+                    alamat_pengiriman,
+                    catatan_alamat_pengiriman
+                },
+                {
+                    transaction,
+                }
+            );
+
+            ongkir = Number(deliveryDetails.ongkir);
+        } else {
+            const error = new Error(
+                'Tipe pengiriman harus delivery atau pickup'
+            );
+
+            error.statusCode = 400;
+            throw error;
         }
 
+        // 4. Menghitung total terbaru.
         const total_harga = subtotal + ongkir;
 
+        // 5. Memperbarui data pesanan.
         await order.update(
             {
                 tipe_pengiriman,
-                alamat_pengiriman: alamatPengiriman,
+
+                alamat_pengiriman:
+                    deliveryDetails?.alamat_pengiriman || null,
+
+                catatan_alamat_pengiriman:
+                    deliveryDetails?.catatan_alamat_pengiriman || null,
+
+                nama_penerima:
+                    deliveryDetails?.nama_penerima || null,
+
+                no_hp_penerima:
+                    deliveryDetails?.no_hp_penerima || null,
+
+                latitude_pengiriman:
+                    deliveryDetails?.latitude_pengiriman ?? null,
+
+                longitude_pengiriman:
+                    deliveryDetails?.longitude_pengiriman ?? null,
+
+                jarak_pengiriman:
+                    deliveryDetails?.jarak_pengiriman ?? null,
+
                 ongkir,
                 total_harga,
             },
             { transaction }
         );
 
+        // 6. Menyimpan perubahan.
         await transaction.commit();
 
         return {
             id_order: order.id_order,
             tipe_pengiriman: order.tipe_pengiriman,
             alamat_pengiriman: order.alamat_pengiriman,
+            catatan_alamat_pengiriman: order.catatan_alamat_pengiriman,
+            nama_penerima: order.nama_penerima,
+            no_hp_penerima: order.no_hp_penerima,
+            latitude_pengiriman: order.latitude_pengiriman,
+            longitude_pengiriman: order.longitude_pengiriman,
+            jarak_pengiriman: order.jarak_pengiriman,
             subtotal: order.subtotal,
             ongkir: order.ongkir,
             total_harga: order.total_harga,
         };
+
     } catch (error) {
         await transaction.rollback();
         throw error;
