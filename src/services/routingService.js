@@ -91,16 +91,13 @@ const calculateRoute = async (customerLocation) => {
   // Mengambil rute pertama
   const route = data.routes[0];
 
-  // Mengambil jarak dalam meter dan durasi dalam detik
+  // Mengambil jarak dalam meter
   const distanceMeters = route.distance;
-  const durationSeconds = route.duration;
 
   // Memastikan hasil perhitungan valid
   if (
     !Number.isFinite(distanceMeters) ||
-    distanceMeters < 0 ||
-    !Number.isFinite(durationSeconds) ||
-    durationSeconds < 0
+    distanceMeters < 0
   ) {
     throw new Error("Hasil perhitungan rute tidak valid.");
   }
@@ -108,15 +105,10 @@ const calculateRoute = async (customerLocation) => {
   // Mengubah jarak menjadi kilometer
   const distanceKm = distanceMeters / 1000;
 
-  // Mengubah durasi menjadi menit
-  const durationMinutes = durationSeconds / 60;
-
   // Mengembalikan hasil perhitungan
   return {
     distanceMeters,
     distanceKm: Number(distanceKm.toFixed(2)),
-    durationSeconds,
-    durationMinutes: Number(durationMinutes.toFixed(2)),
   };
 };
 
