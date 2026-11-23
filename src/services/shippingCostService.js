@@ -66,7 +66,6 @@ const calculateShippingCost = async (customerLocation) => {
   return {
     available: true,
     distanceKm,
-    durationMinutes: route.durationMinutes,
     shippingCost: selectedRate.cost,
     message: "Alamat tersedia untuk pengiriman SoeSweet.",
   };
