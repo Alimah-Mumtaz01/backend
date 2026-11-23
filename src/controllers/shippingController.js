@@ -51,8 +51,6 @@ const calculateShipping = async (req, res) => {
         available: shippingResult.available,
         address: customerLocation.displayName,
         distanceKm: shippingResult.distanceKm,
-        durationMinutes:
-          shippingResult.durationMinutes ?? null,
         shippingCost: shippingResult.shippingCost,
         message: shippingResult.message,
       },
