@@ -25,6 +25,36 @@ const defineOrderModel = (sequelize) => {
                 allowNull: true,
             },
 
+            catatan_alamat_pengiriman: {
+                type: DataTypes.TEXT,
+                allowNull: true,
+            },
+
+            nama_penerima: {
+                type: DataTypes.STRING(100),
+                allowNull: true,
+            },
+
+            no_hp_penerima: {
+                type: DataTypes.STRING(20),
+                allowNull: true,
+            },
+
+            latitude_pengiriman: {
+                type: DataTypes.DECIMAL(10, 7),
+                allowNull: true,
+            },
+
+            longitude_pengiriman: {
+                type: DataTypes.DECIMAL(10, 7),
+                allowNull: true,
+            },
+
+            jarak_pengiriman: {
+                type: DataTypes.DECIMAL(8, 2),
+                allowNull: true,
+            },
+
             catatan: {
                 type: DataTypes.TEXT,
                 allowNull: true,
@@ -100,6 +130,7 @@ const defineOrderModel = (sequelize) => {
             onDelete: "CASCADE",
         });
     };
+
     return Order;
 };
 
