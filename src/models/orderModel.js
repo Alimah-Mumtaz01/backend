@@ -94,6 +94,12 @@ const defineOrderModel = (sequelize) => {
                 allowNull: false,
                 defaultValue: "menunggu_konfirmasi",
             },
+
+            // Alasan pembatalan pesanan.
+            alasan_pembatalan: {
+                type: DataTypes.TEXT,
+                allowNull: true,
+            },
         },
         {
             tableName: "orders",

@@ -214,7 +214,31 @@ const updateOrderStatusSchema = Joi.object({
             'any.only': 'Status order tidak valid',
             'any.required': 'Status order wajib diisi',
             'string.empty': 'Status order wajib diisi'
-        })
+        }),
+
+    // Alasan wajib diisi jika status order dibatalkan.
+    alasan_pembatalan: Joi.when('status_order', {
+        is: 'dibatalkan',
+
+        then: Joi.string()
+            .trim()
+            .min(5)
+            .max(1000)
+            .required()
+            .messages({
+                'string.empty': 'Alasan pembatalan wajib diisi',
+                'string.min': 'Alasan pembatalan minimal 5 karakter',
+                'string.max': 'Alasan pembatalan maksimal 1000 karakter',
+                'any.required': 'Alasan pembatalan wajib diisi'
+            }),
+
+        otherwise: Joi.string()
+            .allow('', null)
+            .optional()
+            .messages({
+                'string.base': 'Alasan pembatalan harus berupa teks'
+            })
+    })
 });
 
 module.exports = {

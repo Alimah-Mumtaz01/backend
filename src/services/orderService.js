@@ -637,9 +637,11 @@ const cancelableStatus = [
     'pembayaran_ditolak',
 ];
 
+
 const updateOrderStatus = async (
     id_order,
-    status_order_baru
+    status_order_baru,
+    alasan_pembatalan = null
 ) => {
     const transaction = await sequelize.transaction();
 
@@ -667,19 +669,37 @@ const updateOrderStatus = async (
             const error = new Error(
                 'Status order saat ini tidak dapat diubah melalui endpoint ini'
             );
+
             error.statusCode = 400;
             throw error;
         }
 
         if (status_order_baru === 'dibatalkan') {
+
+            // 1. Memeriksa apakah pesanan dapat dibatalkan.
             if (!cancelableStatus.includes(status_sekarang)) {
                 const error = new Error(
                     'Order tidak dapat dibatalkan pada tahap ini'
                 );
+
                 error.statusCode = 400;
                 throw error;
             }
 
+            // 2. Memvalidasi alasan pembatalan.
+            if (
+                typeof alasan_pembatalan !== 'string' ||
+                !alasan_pembatalan.trim()
+            ) {
+                const error = new Error(
+                    'Alasan pembatalan wajib diisi'
+                );
+
+                error.statusCode = 400;
+                throw error;
+            }
+
+            // 3. Memeriksa status pembayaran.
             const payment = await Payment.findOne({
                 where: {
                     id_order,
@@ -692,9 +712,11 @@ const updateOrderStatus = async (
                 const error = new Error(
                     'Order dengan pembayaran terverifikasi tidak dapat dibatalkan melalui endpoint ini'
                 );
+
                 error.statusCode = 400;
                 throw error;
             }
+
         } else {
             const allowed = allowedTransitions[status_sekarang] || [];
 
@@ -702,38 +724,50 @@ const updateOrderStatus = async (
                 const error = new Error(
                     `Perubahan status dari ${status_sekarang} ke ${status_order_baru} tidak diizinkan`
                 );
+
                 error.statusCode = 400;
                 throw error;
             }
         }
 
+        // 4. Validasi khusus status pickup.
         if (status_order_baru === 'siap_diambil') {
             if (order.tipe_pengiriman !== 'pickup') {
                 const error = new Error(
                     'Status siap_diambil hanya berlaku untuk pesanan pickup'
                 );
+
                 error.statusCode = 400;
                 throw error;
             }
         }
 
+        // 5. Validasi khusus status delivery.
         if (status_order_baru === 'sedang_dikirim') {
             if (order.tipe_pengiriman !== 'delivery') {
                 const error = new Error(
                     'Status sedang_dikirim hanya berlaku untuk pesanan delivery'
                 );
+
                 error.statusCode = 400;
                 throw error;
             }
         }
 
+        // 6. Memperbarui status pesanan.
         order.status_order = status_order_baru;
+
+        // 7. Menyimpan alasan jika pesanan dibatalkan.
+        if (status_order_baru === 'dibatalkan') {
+            order.alasan_pembatalan = alasan_pembatalan.trim();
+        }
 
         await order.save({ transaction });
 
         await transaction.commit();
 
         return order;
+
     } catch (error) {
         await transaction.rollback();
         throw error;

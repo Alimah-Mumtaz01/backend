@@ -125,11 +125,18 @@ const updateShipping = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
     try {
         const { id_order } = req.params;
-        const { status_order } = req.body;
 
+        // Mengambil status dan alasan pembatalan dari request body.
+        const {
+            status_order,
+            alasan_pembatalan
+        } = req.body;
+
+        // Memperbarui status beserta alasan pembatalan.
         const order = await orderService.updateOrderStatus(
             id_order,
-            status_order
+            status_order,
+            alasan_pembatalan
         );
 
         return res.status(200).json({
@@ -137,6 +144,7 @@ const updateOrderStatus = async (req, res) => {
             message: 'Status order berhasil diperbarui',
             data: order,
         });
+
     } catch (error) {
         console.error('Update order status error:', error);
 
