@@ -1,74 +1,356 @@
-const {sequelize, Payment, Order, OrderItem, OrderItemVariant, Varian} = require("../models");
+const {
+    sequelize,
+    Payment,
+    PaymentMethod,
+    Order,
+    OrderItem,
+    OrderItemVariant,
+    Varian,
+} = require("../models");
 
-const uploadPayment = async (
-    id_user, 
-    id_order,
-    metode_pembayaran,
-    bukti_pembayaran
+/**
+ * Membuat error dengan status HTTP.
+ */
+const createError = (message, statusCode) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+};
+
+/**
+ * Mengambil seluruh metode pembayaran untuk admin.
+ */
+const getAllPaymentMethods = async () => {
+    return await PaymentMethod.findAll({
+        order: [
+            ["createdAt", "DESC"],
+        ],
+    });
+};
+
+/**
+ * Mengambil metode pembayaran aktif untuk customer.
+ */
+const getActivePaymentMethods = async () => {
+    return await PaymentMethod.findAll({
+        where: {
+            status: "aktif",
+        },
+        order: [
+            ["jenis_metode", "ASC"],
+            ["nama_bank", "ASC"],
+            ["jenis_e_wallet", "ASC"],
+        ],
+    });
+};
+
+/**
+ * Menambahkan metode pembayaran.
+ */
+const createPaymentMethod = async (data) => {
+    const {
+        jenis_metode,
+        nama_bank,
+        jenis_e_wallet,
+        nomor_rekening,
+        username,
+    } = data;
+
+    const paymentMethod = await PaymentMethod.create({
+        jenis_metode,
+
+        nama_bank:
+            jenis_metode === "transfer_bank"
+                ? nama_bank
+                : null,
+
+        jenis_e_wallet:
+            jenis_metode === "e-wallet"
+                ? jenis_e_wallet
+                : null,
+
+        nomor_rekening,
+        username,
+        status: "aktif",
+    });
+
+    return paymentMethod;
+};
+
+/**
+ * Memperbarui metode pembayaran.
+ */
+const updatePaymentMethod = async (
+    id_metode_pembayaran,
+    data
+) => {
+    const paymentMethod = await PaymentMethod.findByPk(
+        id_metode_pembayaran
+    );
+
+    if (!paymentMethod) {
+        throw createError(
+            "Metode pembayaran tidak ditemukan",
+            404
+        );
+    }
+
+    const {
+        jenis_metode,
+        nama_bank,
+        jenis_e_wallet,
+        nomor_rekening,
+        username,
+    } = data;
+
+    await paymentMethod.update({
+        jenis_metode,
+
+        nama_bank:
+            jenis_metode === "transfer_bank"
+                ? nama_bank
+                : null,
+
+        jenis_e_wallet:
+            jenis_metode === "e-wallet"
+                ? jenis_e_wallet
+                : null,
+
+        nomor_rekening,
+        username,
+    });
+
+    return paymentMethod;
+};
+
+/**
+ * Mengubah status metode pembayaran.
+ */
+const updatePaymentMethodStatus = async (
+    id_metode_pembayaran,
+    status
+) => {
+    const paymentMethod = await PaymentMethod.findByPk(
+        id_metode_pembayaran
+    );
+
+    if (!paymentMethod) {
+        throw createError(
+            "Metode pembayaran tidak ditemukan",
+            404
+        );
+    }
+
+    await paymentMethod.update({
+        status,
+    });
+
+    return paymentMethod;
+};
+
+/**
+ * Menghapus metode pembayaran.
+ * Jika sudah pernah digunakan, metode akan dinonaktifkan.
+ */
+const deletePaymentMethod = async (
+    id_metode_pembayaran
 ) => {
     const transaction = await sequelize.transaction();
+
     try {
-        const order = await Order.findOne({
+        const paymentMethod = await PaymentMethod.findByPk(
+            id_metode_pembayaran,
+            {
+                transaction,
+                lock: transaction.LOCK.UPDATE,
+            }
+        );
+
+        if (!paymentMethod) {
+            throw createError(
+                "Metode pembayaran tidak ditemukan",
+                404
+            );
+        }
+
+        const totalPayments = await Payment.count({
             where: {
-                id_order,
-                id_user
+                id_metode_pembayaran,
             },
             transaction,
         });
+
+        if (totalPayments > 0) {
+            await paymentMethod.update(
+                {
+                    status: "nonaktif",
+                },
+                {
+                    transaction,
+                }
+            );
+
+            await transaction.commit();
+
+            return {
+                deleted: false,
+                deactivated: true,
+                message:
+                    "Metode pembayaran sudah digunakan dalam transaksi sehingga dinonaktifkan, bukan dihapus.",
+            };
+        }
+
+        await paymentMethod.destroy({
+            transaction,
+        });
+
+        await transaction.commit();
+
+        return {
+            deleted: true,
+            deactivated: false,
+            message: "Metode pembayaran berhasil dihapus",
+        };
+    } catch (error) {
+        await transaction.rollback();
+        throw error;
+    }
+};
+
+/**
+ * Customer mengunggah bukti pembayaran
+ * menggunakan metode pembayaran dari database.
+ */
+const uploadPayment = async (
+    id_user,
+    id_order,
+    id_metode_pembayaran,
+    bukti_pembayaran
+) => {
+    const transaction = await sequelize.transaction();
+
+    try {
+        // 1. Memeriksa pesanan milik customer.
+        const order = await Order.findOne({
+            where: {
+                id_order,
+                id_user,
+            },
+            transaction,
+        });
+
         if (!order) {
-            const error = new Error("Pesanan tidak ditemukan atau bukan milik anda");
-            error.statusCode = 404;
-            throw error;
+            throw createError(
+                "Pesanan tidak ditemukan atau bukan milik anda",
+                404
+            );
         }
-        if (order.status_order !== "menunggu_pembayaran")  {
-            const error = new Error("Pesanan belum dapat melakukan pembayaran");
-            error.statusCode = 400;
-            throw error;
+
+        // 2. Memeriksa status pesanan.
+        if (order.status_order !== "menunggu_pembayaran") {
+            throw createError(
+                "Pesanan belum dapat melakukan pembayaran",
+                400
+            );
         }
+
+        // 3. Memeriksa bukti pembayaran.
         if (!bukti_pembayaran) {
-            const error = new Error("Bukti pembayaran wajib diupload");
-            error.statusCode = 400;
-            throw error;
+            throw createError(
+                "Bukti pembayaran wajib diupload",
+                400
+            );
         }
+
+        // 4. Mengambil metode pembayaran dari database.
+        const paymentMethod = await PaymentMethod.findOne({
+            where: {
+                id_metode_pembayaran,
+                status: "aktif",
+            },
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+        });
+
+        if (!paymentMethod) {
+            throw createError(
+                "Metode pembayaran tidak ditemukan atau sudah tidak aktif",
+                404
+            );
+        }
+
+        // 5. Menentukan nama metode untuk snapshot.
+        const namaMetode =
+            paymentMethod.jenis_metode === "transfer_bank"
+                ? paymentMethod.nama_bank
+                : paymentMethod.jenis_e_wallet;
+
+        // 6. Mencari pembayaran berdasarkan pesanan.
         let payment = await Payment.findOne({
             where: {
                 id_order,
             },
             transaction,
         });
+
+        // Data metode pembayaran yang digunakan.
+        const paymentData = {
+            id_metode_pembayaran:
+                paymentMethod.id_metode_pembayaran,
+
+            // Tetap mengisi kolom lama untuk kompatibilitas.
+            metode_pembayaran: paymentMethod.jenis_metode,
+
+            // Snapshot agar detail rekening tetap tercatat.
+            nama_metode_snapshot: namaMetode,
+            nomor_rekening_snapshot: paymentMethod.nomor_rekening,
+            username_snapshot: paymentMethod.username,
+
+            bukti_pembayaran,
+            status_payment: "pending",
+            verified_by: null,
+            verified_at: null,
+            catatan_verifikasi: null,
+        };
+
         if (payment) {
+            // Pembayaran yang sudah diverifikasi tidak dapat diganti.
             if (payment.status_payment === "verified") {
-                const error = new Error("Pembayaran sudah diverifikasi");
-                error.statusCode = 400;
-                throw error;
+                throw createError(
+                    "Pembayaran sudah diverifikasi",
+                    400
+                );
             }
-            payment.metode_pembayaran = metode_pembayaran;
-            payment.bukti_pembayaran = bukti_pembayaran;
-            payment.status_payment = "pending";
-            payment.verified_by = null;
-            payment.verified_at = null;
-            payment.catatan_verifikasi = null;
-            await payment.save({
-                transaction,
-            });
+
+            // Memperbarui pembayaran yang sudah ada.
+            await payment.update(
+                paymentData,
+                {
+                    transaction,
+                }
+            );
         } else {
+            // Membuat data pembayaran baru.
             payment = await Payment.create(
                 {
                     id_order,
-                    metode_pembayaran,
-                    bukti_pembayaran,
-                    status_payment: "pending"
+                    ...paymentData,
                 },
                 {
                     transaction,
                 }
             );
         }
+
+        // 7. Mengubah status pesanan.
         order.status_order = "pembayaran_diperiksa";
+
         await order.save({
             transaction,
         });
+
         await transaction.commit();
+
         return payment;
     } catch (error) {
         await transaction.rollback();
@@ -76,6 +358,9 @@ const uploadPayment = async (
     }
 };
 
+/**
+ * Admin memverifikasi atau menolak pembayaran.
+ */
 const verifyPayment = async (
     id_admin,
     id_order,
@@ -83,39 +368,50 @@ const verifyPayment = async (
     catatan_verifikasi
 ) => {
     const transaction = await sequelize.transaction();
+
     try {
         const payment = await Payment.findOne({
             where: {
-                id_order
+                id_order,
             },
             transaction,
         });
+
         if (!payment) {
-            const error = new Error("Data pembayaran tidak ditemukan");
-            error.statusCode = 404;
-            throw error;
+            throw createError(
+                "Data pembayaran tidak ditemukan",
+                404
+            );
         }
+
         if (payment.status_payment === "verified") {
-            const error = new Error("Pembayaran sudah diverifikasi sebelumnya");
-            error.statusCode = 400;
-            throw error;
+            throw createError(
+                "Pembayaran sudah diverifikasi sebelumnya",
+                400
+            );
         }
+
         const order = await Order.findOne({
             where: {
                 id_order,
             },
-            transaction
+            transaction,
         });
+
         if (!order) {
-            const error = new Error("Pesanan tidak ditemukan");
-            error.statusCode = 404;
-            throw error;
+            throw createError(
+                "Pesanan tidak ditemukan",
+                404
+            );
         }
+
         if (order.status_order !== "pembayaran_diperiksa") {
-            const error = new Error("Pesanan belum berada pada tahap pemeriksaan pembayaran");
-            error.statusCode = 400;
-            throw error;
+            throw createError(
+                "Pesanan belum berada pada tahap pemeriksaan pembayaran",
+                400
+            );
         }
+
         if (status_payment === "verified") {
             const orderItems = await OrderItem.findAll({
                 where: {
@@ -124,11 +420,12 @@ const verifyPayment = async (
                 include: [
                     {
                         model: OrderItemVariant,
-                        as: "variants"
+                        as: "variants",
                     },
                 ],
                 transaction,
             });
+
             for (const orderItem of orderItems) {
                 for (const itemVariant of orderItem.variants) {
                     const varian = await Varian.findOne({
@@ -138,42 +435,58 @@ const verifyPayment = async (
                         transaction,
                         lock: transaction.LOCK.UPDATE,
                     });
+
                     if (!varian) {
-                        const error = new Error(`Varian dengan ID ${itemVariant.id_varian} tidak ditemukan`);
-                        error.statusCode = 404;
-                        throw error;
+                        throw createError(
+                            `Varian dengan ID ${itemVariant.id_varian} tidak ditemukan`,
+                            404
+                        );
                     }
+
                     if (varian.stok < itemVariant.jumlah) {
-                        const error = new Error(`Stok varian ${varian.nama_varian} tidak mencukupi`);
-                        error.statusCode = 400;
-                        throw error;
+                        throw createError(
+                            `Stok varian ${varian.nama_varian} tidak mencukupi`,
+                            400
+                        );
                     }
-                    varian.stok = varian.stok - itemVariant.jumlah;
+
+                    varian.stok =
+                        varian.stok - itemVariant.jumlah;
+
                     await varian.save({
                         transaction,
                     });
                 }
             }
+
             payment.status_payment = "verified";
             payment.verified_by = id_admin;
             payment.verified_at = new Date();
-            payment.catatan_verifikasi = catatan_verifikasi || null;
+            payment.catatan_verifikasi =
+                catatan_verifikasi || null;
+
             order.status_order = "diproses";
         }
+
         if (status_payment === "rejected") {
             payment.status_payment = "rejected";
             payment.verified_by = id_admin;
             payment.verified_at = new Date();
             payment.catatan_verifikasi = catatan_verifikasi;
+
             order.status_order = "pembayaran_ditolak";
         }
+
         await payment.save({
             transaction,
         });
+
         await order.save({
             transaction,
         });
+
         await transaction.commit();
+
         return {
             payment,
             order,
@@ -185,6 +498,15 @@ const verifyPayment = async (
 };
 
 module.exports = {
+    // CRUD metode pembayaran.
+    getAllPaymentMethods,
+    getActivePaymentMethods,
+    createPaymentMethod,
+    updatePaymentMethod,
+    updatePaymentMethodStatus,
+    deletePaymentMethod,
+
+    // Proses pembayaran.
     uploadPayment,
-    verifyPayment
+    verifyPayment,
 };
