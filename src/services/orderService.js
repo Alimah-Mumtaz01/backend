@@ -7,6 +7,7 @@ const {
     Product,
     Varian,
     Payment,
+    PaymentMethod,
     Review
 } = require('../models');
 
@@ -348,6 +349,16 @@ const getOrderDetailByIdAdmin = async (id_order) => {
                 {
                     model: Payment,
                     as: 'payment',
+                    include: [
+                        {
+                            model: PaymentMethod,
+                            as: 'paymentMethod',
+                            attributes: [
+                                'nama_bank',
+                                'jenis_e_wallet',
+                            ],
+                        },
+                    ],
                 },
             ],
         });
