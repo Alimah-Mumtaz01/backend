@@ -8,10 +8,11 @@ const defineOrderModel = require("./orderModel");
 const defineOrderItemModel = require("./orderItemModel");
 const defineOrderItemVariantModel = require("./orderItemVariantModel");
 const definePaymentModel = require("./paymentModel");
+const definePaymentMethodModel = require("./paymentMethodModel");
 const defineReviewModel = require("./reviewModel");
 const defineReviewImageModel = require("./reviewImageModel");
 
-// Membuat seluruh model
+// Membuat seluruh model.
 const User = defineUserModel(sequelize);
 const Address = defineAddressModel(sequelize);
 const Product = defineProductModel(sequelize);
@@ -20,10 +21,11 @@ const Order = defineOrderModel(sequelize);
 const OrderItem = defineOrderItemModel(sequelize);
 const OrderItemVariant = defineOrderItemVariantModel(sequelize);
 const Payment = definePaymentModel(sequelize);
+const PaymentMethod = definePaymentMethodModel(sequelize);
 const Review = defineReviewModel(sequelize);
 const ReviewImage = defineReviewImageModel(sequelize);
 
-// Mengumpulkan seluruh model
+// Mengumpulkan seluruh model.
 const models = {
     User,
     Address,
@@ -33,18 +35,19 @@ const models = {
     OrderItem,
     OrderItemVariant,
     Payment,
+    PaymentMethod,
     Review,
     ReviewImage,
 };
 
-// Menjalankan relasi setiap model
+// Menjalankan relasi setiap model.
 Object.values(models).forEach((model) => {
     if (typeof model.associate === "function") {
         model.associate(models);
     }
 });
 
-// Mengekspor sequelize dan seluruh model
+// Mengekspor sequelize dan seluruh model.
 module.exports = {
     sequelize,
     ...models,
