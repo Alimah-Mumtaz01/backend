@@ -11,8 +11,6 @@ const {
     Review
 } = require('../models');
 
-const env = require('../config/env');
-
 const {
     resolveDeliveryDetails
 } = require('./deliveryService');
